@@ -25,7 +25,7 @@ data$CO2 <- data$CO2 - baseline
 
 # Graph to visualize the concentration peak
 (CO2 <- plot_ly(data = data, x = ~ind, y = ~CO2, name = 'CO2', mode = 'lines', type = 'scatter') %>%
-  layout(xaxis = list(title="Time (s)"), yaxis = list(title="CO2 [ppm]")))
+  layout(xaxis = list(title="Time (meas)"), yaxis = list(title="CO2 [ppm]")))
 
 
 # Calculation of the flux of C curve
@@ -51,16 +51,16 @@ peaksVal <- data$CO2[maxInd] # Value of the peaks [ppm]
 peaksValFlux <- data$Cflux[maxInd] # Value of the peaks [micrograms]
 
 # Integration of the CO2 peaks
+delay <- 50 # Delay between start of peak and max [s]
+tail <- 120 # Duration of tailing [s]
 
 CarbonCO2 <-  data.frame(matrix(NA, nrow = length(maxInd)))
 for (i in 1:length(maxInd))
-  CarbonCO2[i,1] =  AUC(data$ind[(maxInd[i]-45):(maxInd[i]+ 125)], data$CO2[(maxInd[i]-45):(maxInd[i]+ 125)], method = "trapezoid")
-
+  CarbonCO2[i,1] =  AUC(data$ind[(maxInd[i]-delay*2):(maxInd[i]+ tail*2)], data$CO2[(maxInd[i]-delay*2):(maxInd[i]+ tail*2)], method = "trapezoid")
 
 # Integration  of C flux peaks
-
 CarbonF <-  data.frame(matrix(NA, nrow = length(maxInd)))
 for (i in 1:length(maxInd))
-  CarbonF[i,1] =  AUC(data$SecTime[(maxInd[i]-40):(maxInd[i]+ 120)], data$Cflux[(maxInd[i]-40):(maxInd[i]+ 120)], method = "trapezoid")/2
+  CarbonF[i,1] =  AUC(data$SecTime[(maxInd[i]-delay):(maxInd[i]+ tail)], data$Cflux[(maxInd[i]-delay):(maxInd[i]+ tail)], method = "trapezoid")/2
 
 
