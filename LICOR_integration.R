@@ -18,30 +18,26 @@ pars <- function(fileName){
 
   # Conversion of elapsed time into seconds 
   seconds <-  period_to_seconds(hms(data$Time))
-
   data$SecTime = seconds[]-seconds[1]
   
-  # Solve the problem of the data having 2 measurements per seconds
-  if (data$Time[1] != data$Time[2]){
-    data <- data[-1,]
-  
-    for(i in seq(from = 2, to = nrow(data), by = 2)){
-      data$SecTime[i] = data$SecTime[i] + 0.5
-      i = i + 2
+   # Solve the problem of the data having 2 measurements per seconds
+  for(i in 2:nrow(data)){
+    if(data$SecTime[i] == data$SecTime[i-1]){
+      data$SecTime[i] <- data$SecTime[i] + 0.5
     }
   }
-
   return(data)
 }
 
 
-plot1 <- function(data, baseline = 400, threshold = 1000, maxInd) {
+plot1 <- function(data, baseline = 400, threshold = 1000, maxInd, delay = 20, tail = 120) {
   # Baseline level of CO2 between the peaks
   data$CO2 <- data$CO2 - baseline
   
   max <- which(diff(sign(diff(data$CO2, lag = 2)))==-2)+1 # Indices at which local max or min are detected
   peaksInd <- which(data$CO2[max]>threshold) # Indices of max which correspond to actual peaks 
   maxInd <- max[peaksInd] # Indices of these in the actual data
+  len = length(maxInd)
   
   # Prepare lines to indicate the different peaks
   line <- list(
@@ -51,47 +47,60 @@ plot1 <- function(data, baseline = 400, threshold = 1000, maxInd) {
     yref = "y"
   )
   
-  lines <- list()
+  line_x1 <- list()
+  line_x2 <- list()
   txt <- vector()
-  for (i in 1:length(maxInd)){
-    line[c("x0", "x1")] <- maxInd[i]/2
+  for(i in 1:len){
+    line_x1[i] <- maxInd[i]-delay*2
+    line_x2[i] <- maxInd[i]+tail*2
+    
+    txt[i] <- as.character(i)
+  }
+  
+  line_x <- append(line_x1, line_x2)
+  
+  lines <- list()
+  for (i in 1:(len*2)){
+    line[c("x0","x1")] <- line_x[i]
     line[["y0"]] <- 0
     line[["y1"]] <- threshold
     lines <- c(lines, list(line))
-    
-    txt[i] <- as.character(i)
-    
-}
+  }
   
   # Graph to visualize the concentration peak (with baseline correction)
-  CO2_base <- plot_ly(data = data, x = ~SecTime, y = ~CO2, name = 'CO2', mode = 'lines', type = 'scatter')%>%
-    layout(yaxis = list(title="CO<sub>2 </sub>[ppm]"))%>%
-    layout(shapes = lines)%>%
-    add_text(showlegend = FALSE, x = maxInd/2 + 200, y = ~threshold, text = txt)%>%
-    add_annotations(text = "CO<sub>2 </sub>curve", x = 0, y = 1, yref = "paper", xref = "paper", xanchor = "left", 
-      yanchor = "top", yshift = 20,showarrow = FALSE, font = list(size = 15))
+  CO2_base <- plot_ly(data = data, x = ~ind, y = ~CO2, name = 'CO2', mode = 'lines', type = 'scatter')%>%
+      layout(yaxis = list(title="CO<sub>2 </sub>[ppm]"))%>%
+      layout(shapes = lines)%>%
+      add_text(showlegend = FALSE, x = maxInd, y = -800, text = txt)%>%
+      add_annotations(text = "CO<sub>2 </sub>curve", x = 0, y = 1, yref = "paper", xref = "paper", xanchor = "left", 
+                      yanchor = "top", yshift = 20,showarrow = FALSE, font = list(size = 15))
+
   
   return(CO2_base)
 }
 
-plot2 <- function(data, flow = 55, baseline = 400) {
+plot2 <- function(data) {
   
-  # Baseline level of CO2 between the peaks
-  data$CO2 <- data$CO2 - baseline
   
-  # Calculation of the flux of C curve
-  flowliter <- flow/(1000*60)  # in L/sec
-  
-  # Curve of C in microgramms per sec (ideal gas law), from the ppm and flow
-  data$Cflux <- ((12.01)*(data$PCell*flowliter)/(8.3145*(data$TCell+ 273.15)))*data$CO2
-  
-  Cflux <- plot_ly(data = data, x = ~SecTime, y = ~Cflux, name = 'C', mode = 'lines', type = 'scatter') %>%
-    layout(xaxis = list(title="Time (s)"), yaxis = list(title="C [Î¼g/s]"))%>% 
-    add_annotations(text = "Carbon flux curve", x = 0, y = 1, yref = "paper", xref = "paper", xanchor = "left", 
+  H2O <- plot_ly(data = data, x = ~ind, y = ~H2O, name = 'H2O', mode = 'lines', type = 'scatter') %>%
+    layout(xaxis = list(title="Time (s)"), yaxis = list(title="H2O [mmol/mol]"))%>% 
+    add_annotations(text = "H20 content", x = 0, y = 1, yref = "paper", xref = "paper", xanchor = "left", 
     yanchor = "top", yshift = 20,showarrow = FALSE, font = list(size = 15))%>%
     layout(showlegend = FALSE)
   
-  return(Cflux)
+  return(H2O)
+}
+
+plot3 <- function(data) {
+  
+  
+  Pres <- plot_ly(data = data, x = ~ind, y = ~PCell, name = 'PCell', mode = 'lines', type = 'scatter') %>%
+    layout(xaxis = list(title="Time (s)"), yaxis = list(title="PCell [kPa]"))%>%
+    add_annotations(text = "Cell Pressure", x = 0, y = 1, yref = "paper", xref = "paper", xanchor = "left", 
+    yanchor = "top", yshift = 20,showarrow = FALSE, font = list(size = 15))%>%
+    layout(showlegend = FALSE)
+  
+  return(Pres)
 }
 
 integ <- function(data, delay = 20, tail = 120, threshold = 1000, flow = 55, baseline = 400){
