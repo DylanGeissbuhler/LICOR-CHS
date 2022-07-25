@@ -14,7 +14,7 @@ ui <- fluidPage(
       numericInput("baseline","Enter a baseline value [ppm] :", value = 400),
       numericInput("flow","Flowrate of CHS [mL/min] :", value = 55),
       numericInput("threshold","Value of threshold for peak [ppm] :", value = 2000),
-      numericInput("delay","Delay between start of peak and top [s] :", value = 30),
+      numericInput("delay","Delay between start of peak and top [s] :", value = 20),
       numericInput("tail", "Duration of tailing [s] :", value = 120),
       tableOutput("carbon")
     ),
@@ -46,9 +46,10 @@ server <- function(input, output, session) {
   output$CO2Plot <- renderPlotly({
     req(input$file1)
     
-    subplot(list(plot1(data(), input$baseline, input$threshold), 
-                 plot2(data(), input$flow, input$baseline)), 
-            nrows = 2, margin = 0.01, titleX = TRUE, titleY = TRUE,
+    subplot(list(plot1(data(), input$baseline, input$threshold, maxInd, input$delay, input$tail), 
+                 plot2(data()),
+                 plot3(data())), 
+            nrows = 3, margin = 0.03, titleX = TRUE, titleY = TRUE,
             shareX = TRUE)
     
   })
@@ -60,3 +61,4 @@ server <- function(input, output, session) {
     }
 
 shinyApp(ui = ui, server = server)
+
